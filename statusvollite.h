@@ -49,8 +49,12 @@
 	@property(readonly, nonatomic) int style;
 @end
 
+@interface XBApplicationSnapshotManifest : NSObject
+	- (id)containerPath;
+@end
+
 // THIS
-@interface SBApplication
+@interface SBApplication : NSObject
 	- (_Bool)statusBarHiddenForCurrentOrientation;
 	- (UIStatusBarStyleRequest *)effectiveStatusBarStyleRequest;
 	- (id)mainSceneID;
@@ -59,7 +63,7 @@
 	- (id)bundleIdentifier;
 	
 	- (void)saveSuspendSnapshot:(id)arg1 forScene:(id)arg2;
-	
+	- (XBApplicationSnapshotManifest *)_snapshotManifest;
 	- (id)_baseAppSnapshotPath;
 	
 	- (id)transitionContext;

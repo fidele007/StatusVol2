@@ -170,25 +170,34 @@ bool sVolIsVisible=NO;
 					}else{
 						// Figure out brightness of top 40 lines of screenshot
 						NSFileManager *fileManager=[[NSFileManager alloc] init];
-						NSURL *directoryURL=[NSURL URLWithString:[NSString stringWithFormat:@"%@/%@",[SBA _baseAppSnapshotPath],[SBA bundleIdentifier]]];
-						NSArray *keys=[NSArray arrayWithObjects:NSURLAttributeModificationDateKey,NSURLIsRegularFileKey,nil];
-			
-						// Find newest screenshot
-						NSDirectoryEnumerator *screenshotEnum=[fileManager enumeratorAtURL:directoryURL includingPropertiesForKeys:keys options:0 errorHandler:nil];
-			
+						NSString *snapshotPath;
+						if ([SBA respondsToSelector:@selector(_baseAppSnapshotPath)]) {
+							snapshotPath = [SBA _baseAppSnapshotPath];
+						} else if ([SBA respondsToSelector:@selector(_snapshotManifest)]) {
+							snapshotPath = [[SBA _snapshotManifest] containerPath];
+						}
+
 						NSURL *newestURL;
-						NSDate *newestDate;
-						for (NSURL *url in screenshotEnum){
-							NSError *err;
-							NSDate *fileDate=nil;
-							NSNumber *isFile=nil;
-							[url getResourceValue:&fileDate forKey:NSURLAttributeModificationDateKey error:&err];
-							[url getResourceValue:&isFile forKey:NSURLIsRegularFileKey error:&err];
-				
-							if (newestDate==nil || [newestDate compare:fileDate]==NSOrderedAscending){
-								if (isFile!=nil && [isFile integerValue]==1){
-									newestDate=fileDate;
-									newestURL=url;
+						if (snapshotPath != nil) {
+							NSURL *directoryURL=[NSURL URLWithString:[NSString stringWithFormat:@"%@/%@",snapshotPath,[SBA bundleIdentifier]]];
+							NSArray *keys=[NSArray arrayWithObjects:NSURLAttributeModificationDateKey,NSURLIsRegularFileKey,nil];
+
+							// Find newest screenshot
+							NSDirectoryEnumerator *screenshotEnum=[fileManager enumeratorAtURL:directoryURL includingPropertiesForKeys:keys options:0 errorHandler:nil];
+
+							NSDate *newestDate;
+							for (NSURL *url in screenshotEnum){
+								NSError *err;
+								NSDate *fileDate=nil;
+								NSNumber *isFile=nil;
+								[url getResourceValue:&fileDate forKey:NSURLAttributeModificationDateKey error:&err];
+								[url getResourceValue:&isFile forKey:NSURLIsRegularFileKey error:&err];
+
+								if (newestDate==nil || [newestDate compare:fileDate]==NSOrderedAscending){
+									if (isFile!=nil && [isFile integerValue]==1){
+										newestDate=fileDate;
+										newestURL=url;
+									}
 								}
 							}
 						}

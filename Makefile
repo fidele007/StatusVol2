@@ -1,7 +1,7 @@
 export ARCHS = armv7 armv7s arm64
 export ADDITIONAL_OBJCFLAGS = -fobjc-arc
 
-include theos/makefiles/common.mk
+include $(THEOS)/makefiles/common.mk
 
 TWEAK_NAME = statusvolLite
 statusvolLite_FILES = Tweak.xm

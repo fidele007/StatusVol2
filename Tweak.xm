@@ -1,52 +1,18 @@
 #import <AudioToolbox/AudioServices.h> // Temporary fix for silent mode vibrate support
 #import <QuartzCore/QuartzCore.h>
 #import "statusvollite.h"
+#import <objc/runtime.h>
 
 // Global vars
 StatusVol *svol;
 bool sVolIsVisible=NO;
-
-// Force hide silent switch HUD - would prefer a better solution here
-%hook SBRingerHUDController
-	+ (void)activate:(int)arg1{
-		[svol _updateSvolLabel:17+arg1 type:1];
-	}
-%end
-
-// Hook volume change events
-%hook VolumeControl
-	- (void)_changeVolumeBy:(float)arg1{
-		%orig;
-		
-		int theMode=MSHookIvar<int>(self,"_mode");
-		
-		if (theMode==0){
-			[svol _updateSvolLabel:[self getMediaVolume]*16 type:0];
-		}else{
-			[svol _updateSvolLabel:[self volume]*16 type:1];
-		}
-	}
-	
-	// Force HUDs hidden
-	- (_Bool)_HUDIsDisplayableForCategory:(id)arg1{return NO;}
-	- (_Bool)_isCategoryAlwaysHidden:(id)arg1{return YES;}
-%end
-
-%hook SpringBoard
-	- (void)applicationDidFinishLaunching:(id)arg1{
-		%orig;
-		
-		// Create StatusVol inside SpringBoard
-		svol=[[StatusVol alloc] init];
-	}
-%end
+// static long long lastOrientation;
 
 // StatusVol needs an auto-rotating UIWindow
 @implementation svolWindow
 	// Un-hide after rotation
 	- (void)_finishedFullRotation:(id)arg1 finished:(id)arg2 context:(id)arg3{
 		[super _finishedFullRotation:arg1 finished:arg2 context:arg3];
-		
 		[self fixSvolWindow];
 		if (sVolIsVisible) [self setHidden:NO]; // Mitigate black box issue
 	}
@@ -54,26 +20,15 @@ bool sVolIsVisible=NO;
 	// Fix frame after orientation
 	- (void)fixSvolWindow{
 		// Reset frame
-		long orientation=(long)[[UIDevice currentDevice] orientation];
+		// long orientation = [(SpringBoard *)[UIApplication sharedApplication] _frontMostAppOrientation];
 		CGRect windowRect=self.frame;
 		windowRect.origin.x=0;
 		windowRect.origin.y=0;
 		
-		switch (orientation){
-			case 1:{
-				if (!sVolIsVisible) windowRect.origin.y=-20;
-			}break;
-			case 2:{
-				if (!sVolIsVisible) windowRect.origin.y=20;
-			}break;
-			case 3:{
-				if (!sVolIsVisible) windowRect.origin.x=20;
-			}break;
-			case 4:{
-				if (!sVolIsVisible) windowRect.origin.x=-20;
-			}break;
+		if (!sVolIsVisible) {
+			windowRect.origin.y = -20;
 		}
-		
+
 		[self setFrame:windowRect];
 	}
 	
@@ -277,7 +232,7 @@ bool sVolIsVisible=NO;
 				}
 			}
 		}
-		
+		// Not dynamic color
 		bool colorChoice=[[preferences objectForKey:@"InvertColors"] intValue];
 		if (dynColor>-1){
 			// IN: 1 white, 0 black
@@ -371,7 +326,21 @@ bool sVolIsVisible=NO;
 		NSMutableAttributedString *attributedString=[[NSMutableAttributedString alloc] initWithString:timeString];
 		if ([[preferences objectForKey:@"UseSquares"] intValue]==0) [attributedString addAttribute:NSKernAttributeName value:[NSNumber numberWithFloat:-2.0] range:NSMakeRange(0, [timeString length])];
 		[indicatorLabel setAttributedText:attributedString];
-		
+
+		CGRect windowRect=sVolWindow.frame;
+		long orientation=(long)[(SpringBoard *)[UIApplication sharedApplication] _frontMostAppOrientation];
+		[sVolWindow _rotateWindowToOrientation:orientation
+													 updateStatusBar:NO
+																	duration:0
+														 skipCallbacks:YES];
+		CGRect mainScreenRect = [UIScreen mainScreen].bounds;
+		if (orientation == 3 || orientation == 4) {
+			windowRect = CGRectMake(0, 0, CGRectGetHeight(mainScreenRect), 20);
+		} else {
+			windowRect = CGRectMake(0, 0, CGRectGetWidth(mainScreenRect), 20);
+		}
+		[sVolWindow setFrame:windowRect];
+
 		// Show and set hide timer
 		if (!sVolIsVisible || isAnimatingClose){
 			// Window adjustments
@@ -385,17 +354,9 @@ bool sVolIsVisible=NO;
 			
 			// Animate entry
 			[UIView animateWithDuration:[[preferences objectForKey:@"AnimationDuration"] floatValue] delay:nil options:(UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction) animations:^{
+
 				CGRect windowRect=sVolWindow.frame;
-				
-				// Animation dependent on orientation
-				long orientation=(long)[[UIDevice currentDevice] orientation];
-				switch (orientation){
-					case 1:windowRect.origin.y=0;break;
-					case 2:windowRect.origin.y=0;break;
-					case 3:windowRect.origin.x=0;break;
-					case 4:windowRect.origin.x=0;break;
-				}
-				
+				windowRect.origin.y = 0;
 				[sVolWindow setFrame:windowRect];
 			} completion:^(BOOL finished){
 				// Reset the timer
@@ -418,16 +379,8 @@ bool sVolIsVisible=NO;
 		[UIView animateWithDuration:[[preferences objectForKey:@"AnimationDuration"] floatValue] delay:0 options:(UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction) animations:^{
 			isAnimatingClose=YES;
 			CGRect windowRect=sVolWindow.frame;
-			
 			// Animation dependent on orientation
-			long orientation=(long)[[UIDevice currentDevice] orientation];
-			switch (orientation){
-				case 1:windowRect.origin.y=-20;break;
-				case 2:windowRect.origin.y=20;break;
-				case 3:windowRect.origin.x=20;break;
-				case 4:windowRect.origin.x=-20;break;
-			}
-			
+			windowRect.origin.y = -20;
 			[sVolWindow setFrame:windowRect];
 		} completion:^(BOOL finished){
 			// Hide the window
@@ -445,14 +398,60 @@ bool sVolIsVisible=NO;
 	}
 	
 @end
-	
+
+// Force hide silent switch HUD - would prefer a better solution here
+%hook SBRingerHUDController
+	+ (void)activate:(int)arg1{
+		[svol _updateSvolLabel:17+arg1 type:1];
+	}
+%end
+
+// Hook volume change events
+%hook VolumeControl
+	- (void)_changeVolumeBy:(float)arg1{
+		%orig;
+
+		int theMode=MSHookIvar<int>(self,"_mode");
+		if (theMode==0){
+			[svol _updateSvolLabel:[self getMediaVolume]*16 type:0];
+		}else{
+			[svol _updateSvolLabel:[self volume]*16 type:1];
+		}
+	}
+
+	// Force HUDs hidden
+	- (_Bool)_HUDIsDisplayableForCategory:(id)arg1{return NO;}
+	- (_Bool)_isCategoryAlwaysHidden:(id)arg1{return YES;}
+%end
+
+%hook SpringBoard
+	- (void)applicationDidFinishLaunching:(id)arg1{
+		%orig;
+		// Create StatusVol inside SpringBoard
+		svol=[[StatusVol alloc] init];
+	}
+
+	// - (long long)_frontMostAppOrientation {
+	// 	long long orientation = %orig;
+	// 	if (svol != nil && lastOrientation != orientation) {
+	// 		lastOrientation = orientation;
+	// 		svolWindow *statusVolWindow = MSHookIvar<svolWindow *>(svol, "sVolWindow");
+	// 		[statusVolWindow _rotateWindowToOrientation:orientation
+	// 		 														updateStatusBar:NO
+	// 		 																	 duration:0
+	// 		 														  skipCallbacks:YES];
+	// 	}
+	// 	return %orig;
+	// }
+%end
+
 static void PreferencesChanged(CFNotificationCenterRef center, void *observer, CFStringRef name, const void *object, CFDictionaryRef userInfo) {
 	if (svol!=nil) [svol loadPreferences];
 }
 
 %ctor{
 	CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(), NULL, PreferencesChanged, CFSTR("com.chewmieser.statusvollite.prefs-changed"), NULL, CFNotificationSuspensionBehaviorDeliverImmediately);
-	
+
 	if (access("/var/lib/dpkg/info/com.chewmieser.statusvollite.list",F_OK)==-1){
 		NSLog(@"[StatusVol 2] This package came from an unofficial repo. Please re-download from http://apt.steverolfe.com.");
 	}

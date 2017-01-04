@@ -1,6 +1,6 @@
 export ARCHS = armv7 armv7s arm64
 
-include theos/makefiles/common.mk
+include $(THEOS)/makefiles/common.mk
 
 BUNDLE_NAME = StatusVolLiteprefs
 StatusVolLiteprefs_FILES = StatusVolLiteprefs.mm statusVolLiteHeader.m themeListController.m animationListController.m legacyListController.m SVLSwitchTableCell.m SVLSliderTableCell.m

@@ -108,6 +108,7 @@
 @interface SBMainStatusBarStateProvider
 	+(id)sharedInstance;
 	-(void)enableTime:(BOOL)arg1 crossfade:(BOOL)arg2 crossfadeDuration:(int)arg3;
+	- (void)setTimeCloaked:(_Bool)arg1;
 @end
 	
 @interface _UILegibilityLabel : UIView

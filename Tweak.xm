@@ -293,7 +293,9 @@ bool sVolIsVisible=NO;
 		}
 		
 		if ([[preferences objectForKey:@"HideTime"] intValue]==1){
-			[[objc_getClass("SBMainStatusBarStateProvider") sharedInstance] enableTime:NO crossfade:NO crossfadeDuration:0];
+			SBMainStatusBarStateProvider *statusBarStateProvider = [%c(SBMainStatusBarStateProvider) sharedInstance];
+			[statusBarStateProvider enableTime:NO crossfade:NO crossfadeDuration:0];
+			[statusBarStateProvider setTimeCloaked:YES];
 		}
 		
 		// Silent switch
@@ -400,7 +402,9 @@ bool sVolIsVisible=NO;
 				[sVolWindow setHidden:YES];
 			
 				if ([[preferences objectForKey:@"HideTime"] intValue]==1){
-					[[objc_getClass("SBMainStatusBarStateProvider") sharedInstance] enableTime:YES crossfade:NO crossfadeDuration:0];
+					SBMainStatusBarStateProvider *statusBarStateProvider = [%c(SBMainStatusBarStateProvider) sharedInstance];
+					[statusBarStateProvider enableTime:YES crossfade:NO crossfadeDuration:0];
+					[statusBarStateProvider setTimeCloaked:NO];
 				}
 			}
 		}];

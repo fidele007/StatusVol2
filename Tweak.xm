@@ -160,7 +160,9 @@ bool sVolIsVisible=NO;
 					NSArray *brightnessArray=[cachedBrightness objectForKey:[SBA bundleIdentifier]];
 					
 					// Do we have a cached brightness?
-					if (brightnessArray!=nil && ([[NSDate date] timeIntervalSince1970]-[(NSDate *)[brightnessArray objectAtIndex:1] timeIntervalSince1970])<60*5){
+					if (brightnessArray!=nil &&
+							[brightnessArray count] > 1 &&
+							([[NSDate date] timeIntervalSince1970]-[(NSDate *)[brightnessArray objectAtIndex:1] timeIntervalSince1970])<60*5){
 						float dynamicColorsBrightness=[[brightnessArray objectAtIndex:0] floatValue];
 						if (dynamicColorsBrightness>0.5){
 							dynColor=1;

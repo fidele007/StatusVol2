@@ -2,10 +2,10 @@ Package: com.chewmieser.statusvollite
 Name: StatusVol 2
 Depends: mobilesubstrate,preferenceloader
 Conflicts: com.chewmieser.statusvol
-Version: 0.7
+Version: 0.9
 Architecture: iphoneos-arm
-Description: Replacement volume HUD for iOS8
+Description: An updated and hopefully bug-free version of StatusVol 2. Tested on iOS 9.3.3, not tested on iOS 10.1.1. All credits to Steve Rolfe who brought this tweak to life.
+Depiction: https://fidele007.github.io/depictions/?p=com.chewmieser.statusvollite
 Maintainer: Steven Rolfe
 Author: Steven Rolfe
 Section: Tweaks
-Depiction: http://apt.steverolfe.com/depiction/statusvollite.html

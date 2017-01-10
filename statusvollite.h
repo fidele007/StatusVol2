@@ -35,6 +35,16 @@
 	- (NSString *)displayIdentifier;
 @end
 
+@interface SBLockScreenViewController : UIViewController
+- (BOOL)isInScreenOffMode;
+- (BOOL)isLockScreenVisible;
+@end
+
+@interface SBLockScreenManager : NSObject
+	+ (id)sharedInstanceIfExists;
+	- (SBLockScreenViewController *)lockScreenViewController;
+@end
+
 @interface SpringBoard : UIApplication
 	- (id)statusBar;
 	- (id)_accessibilityFrontMostApplication;

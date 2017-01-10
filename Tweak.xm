@@ -130,11 +130,18 @@ bool sVolIsVisible=NO;
 	}
 	
 	- (void)_updateSvolLabel:(int)level type:(int)type{
+		BOOL isLockScreenVisible = NO;
+		SBLockScreenManager *manager = [%c(SBLockScreenManager) sharedInstanceIfExists];
+		if (manager != nil) {
+			SBLockScreenViewController *lockScreenViewController = (SBLockScreenViewController *)[manager lockScreenViewController];
+			isLockScreenVisible = [lockScreenViewController isLockScreenVisible];
+		}
+
 		NSMutableString *timeString=[[NSMutableString alloc] init];
 		
 		// Are we dynamic?
 		int dynColor=-1;
-		if ([[preferences objectForKey:@"DynamicColors"] intValue]==1){
+		if ([[preferences objectForKey:@"DynamicColors"] intValue]==1 && !isLockScreenVisible){
 			SpringBoard *SB=(SpringBoard *)[UIApplication sharedApplication];
 			SBApplication *SBA=(SBApplication *)[SB _accessibilityFrontMostApplication];
 			
@@ -445,19 +452,6 @@ bool sVolIsVisible=NO;
 		// Create StatusVol inside SpringBoard
 		svol=[[StatusVol alloc] init];
 	}
-
-	// - (long long)_frontMostAppOrientation {
-	// 	long long orientation = %orig;
-	// 	if (svol != nil && lastOrientation != orientation) {
-	// 		lastOrientation = orientation;
-	// 		svolWindow *statusVolWindow = MSHookIvar<svolWindow *>(svol, "sVolWindow");
-	// 		[statusVolWindow _rotateWindowToOrientation:orientation
-	// 		 														updateStatusBar:NO
-	// 		 																	 duration:0
-	// 		 														  skipCallbacks:YES];
-	// 	}
-	// 	return %orig;
-	// }
 %end
 
 static void PreferencesChanged(CFNotificationCenterRef center, void *observer, CFStringRef name, const void *object, CFDictionaryRef userInfo) {

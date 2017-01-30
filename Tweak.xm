@@ -107,9 +107,9 @@ bool sVolIsVisible = NO;
   if ([sVolWindow respondsToSelector:@selector(_setSecure:)]) {
     [sVolWindow _setSecure:YES];
   }
-  sVolWindow.windowLevel=1058;
+  sVolWindow.windowLevel = 10580;
 
-  mainFrame.origin.y=0;
+  mainFrame.origin.y = 0;
 
   // Main view controller
   primaryVC = [[UIViewController alloc] init];

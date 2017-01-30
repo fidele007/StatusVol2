@@ -42,6 +42,7 @@
 @interface SBLockScreenManager : NSObject
 + (id)sharedInstanceIfExists;
 - (SBLockScreenViewController *)lockScreenViewController;
+- (BOOL)isLockScreenVisible;
 @end
 
 @interface SpringBoard : UIApplication

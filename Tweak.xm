@@ -10,13 +10,13 @@ bool sVolIsVisible = NO;
 // StatusVol needs an auto-rotating UIWindow
 @implementation svolWindow
   // Un-hide after rotation
-- (void)_finishedFullRotation:(id)arg1 finished:(id)arg2 context:(id)arg3{
+- (void)_finishedFullRotation:(id)arg1 finished:(id)arg2 context:(id)arg3 {
   [super _finishedFullRotation:arg1 finished:arg2 context:arg3];
   [self fixSvolWindow];
-    if (sVolIsVisible) {
-      [self setHidden:NO]; // Mitigate black box issue
-    }
+  if (sVolIsVisible) {
+    [self setHidden:NO]; // Mitigate black box issue
   }
+}
 
 // Fix frame after orientation
 - (void)fixSvolWindow {
@@ -34,16 +34,16 @@ bool sVolIsVisible = NO;
 }
 
 // Force support auto-rotation. Hide on rotation events
-- (BOOL)_shouldAutorotateToInterfaceOrientation:(int)arg1{
+- (BOOL)_shouldAutorotateToInterfaceOrientation:(int)arg1 {
   [self setHidden:YES]; // Mitigate black box issue
   return YES;
 }
 @end
   
 @implementation StatusVol
-- (id)init{
+- (id)init {
   self = [super init];
-  if (self){
+  if (self != nil) {
     preferences = [[NSDictionary alloc] init];
     cachedBrightness = [[NSMutableDictionary alloc] init];
     isAnimatingClose = NO;
@@ -152,7 +152,11 @@ bool sVolIsVisible = NO;
   SBLockScreenManager *manager = [%c(SBLockScreenManager) sharedInstanceIfExists];
   if (manager != nil) {
     SBLockScreenViewController *lockScreenViewController = (SBLockScreenViewController *)[manager lockScreenViewController];
-    isLockScreenVisible = [lockScreenViewController isLockScreenVisible];
+    if ([lockScreenViewController respondsToSelector:@selector(isLockScreenVisible)]) {
+      isLockScreenVisible = [lockScreenViewController isLockScreenVisible];
+    } else if ([manager respondsToSelector:@selector(isLockScreenVisible)]) {
+      isLockScreenVisible = [manager isLockScreenVisible];
+    }
   }
 
   NSMutableString *timeString = [[NSMutableString alloc] init];
@@ -347,7 +351,7 @@ bool sVolIsVisible = NO;
     }
     
     // Icons for system vs media volume - if enabled
-    if ([[preferences objectForKey:@"HideIcons"] intValue] == 0){
+    if ([[preferences objectForKey:@"HideIcons"] intValue] == 0) {
       if (type == 0){
         [timeString appendString:@"♫  "];
       }else{
@@ -357,7 +361,7 @@ bool sVolIsVisible = NO;
     
     // Make level into string - circles or squares?
     for (int i = 0; i < level; i++) {
-      if ([[preferences objectForKey:@"UseSquares"] intValue]==0){
+      if ([[preferences objectForKey:@"UseSquares"] intValue]==0) {
         [timeString appendString:@"⚫︎"];
       } else {
         [timeString appendString:@"◾︎"];//@"■"];

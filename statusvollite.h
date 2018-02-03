@@ -63,8 +63,13 @@
 - (id)containerPath;
 @end
 
+@interface SBApplicationInfo : NSObject
+@property (nonatomic,readonly) long long defaultStatusBarStyle;
+@end
+
 // THIS
 @interface SBApplication : NSObject
+@property (nonatomic,readonly) SBApplicationInfo * info;
 - (_Bool)statusBarHiddenForCurrentOrientation;
 - (UIStatusBarStyleRequest *)effectiveStatusBarStyleRequest;
 - (id)mainSceneID;
@@ -148,4 +153,8 @@
 - (void)initializeWindow;
 - (void)_updateSvolLabel:(int)level type:(int)type;
 - (void)hideSvolWindow;
+@end
+
+@interface UIScreen (SVXUIScreen)
+- (CGRect)_boundsForInterfaceOrientation:(long long)arg1 ;
 @end

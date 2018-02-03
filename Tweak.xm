@@ -6,6 +6,7 @@
 // Global vars
 StatusVol *svol;
 bool sVolIsVisible = NO;
+bool IsCurrentAppStatusBarHidden;
 
 // StatusVol needs an auto-rotating UIWindow
 @implementation svolWindow
@@ -39,7 +40,7 @@ bool sVolIsVisible = NO;
   return YES;
 }
 @end
-  
+
 @implementation StatusVol
 - (id)init {
   self = [super init];
@@ -61,7 +62,7 @@ bool sVolIsVisible = NO;
   NSMutableDictionary *tmpPrefs;
   CFStringRef appID = CFSTR("com.chewmieser.statusvollite");
   CFArrayRef keyList = CFPreferencesCopyKeyList(appID,kCFPreferencesCurrentUser,kCFPreferencesAnyHost);
-  if (!keyList){
+  if (!keyList) {
     tmpPrefs = [[NSMutableDictionary alloc] init];
   } else {
     tmpPrefs = (__bridge NSMutableDictionary *)CFPreferencesCopyMultiple(keyList,appID,kCFPreferencesCurrentUser,kCFPreferencesAnyHost);
@@ -116,7 +117,7 @@ bool sVolIsVisible = NO;
   [primaryVC.view setAutoresizingMask:UIViewAutoresizingFlexibleWidth];
 
   // Blur view
-  if ([%c(UIBlurEffect) class]){
+  if ([%c(UIBlurEffect) class]) {
     UIBlurEffect *blurEffect = [%c(UIBlurEffect) effectWithStyle:UIBlurEffectStyleDark];
     blurView = [[%c(UIVisualEffectView) alloc] initWithEffect:blurEffect];
     [blurView setFrame:mainFrame];
@@ -129,24 +130,39 @@ bool sVolIsVisible = NO;
     [back setAutoresizingMask:UIViewAutoresizingFlexibleWidth];
     [primaryVC.view addSubview:back];
   }
-  
+
   // Label
   indicatorLabel = [[UILabel alloc] initWithFrame:mainFrame];
   [indicatorLabel setAutoresizingMask:UIViewAutoresizingFlexibleWidth];
   [indicatorLabel setTextColor:[UIColor whiteColor]];
   [indicatorLabel setTextAlignment:NSTextAlignmentCenter];
-  
+
   UIFont *labelFont = [UIFont fontWithName:@"Helvetica Neue" size:12];
   [indicatorLabel setFont:labelFont];
-  
+
   [primaryVC.view addSubview:indicatorLabel];
-  
+
   // Make visible and hide window
   sVolWindow.rootViewController=primaryVC;
   [sVolWindow makeKeyAndVisible];
   [sVolWindow setHidden:YES];
 }
-  
+
+- (CGRect)getScreenBoundsForOrientation:(int)orientation {
+  UIScreen *mainScreen = [UIScreen mainScreen];
+  if ([mainScreen respondsToSelector:@selector(_boundsForInterfaceOrientation:)]) {
+    return [mainScreen _boundsForInterfaceOrientation:orientation];
+  }
+
+  if (orientation != 3 && orientation != 4) return mainScreen.bounds;
+
+  return CGRectMake(mainScreen.bounds.origin.x,
+                    mainScreen.bounds.origin.y,
+                    mainScreen.bounds.size.height,
+                    mainScreen.bounds.size.width);
+}
+
+
 - (void)_updateSvolLabel:(int)level type:(int)type{
   BOOL isLockScreenVisible = NO;
   SBLockScreenManager *manager = [%c(SBLockScreenManager) sharedInstanceIfExists];
@@ -160,31 +176,31 @@ bool sVolIsVisible = NO;
   }
 
   NSMutableString *timeString = [[NSMutableString alloc] init];
-  
+
   // Are we dynamic?
   int dynColor=-1;
   if ([[preferences objectForKey:@"DynamicColors"] intValue] == 1 && !isLockScreenVisible) {
     SpringBoard *SB=(SpringBoard *)[UIApplication sharedApplication];
     SBApplication *SBA=(SBApplication *)[SB _accessibilityFrontMostApplication];
-    
+
     // Are we in SpringBoard?
-    if (SBA == nil){
+    if (SBA == nil) {
       UIStatusBar *springStatus = [SB statusBar];
       UIStatusBarForegroundView *springForeground = MSHookIvar<UIStatusBarForegroundView *>(springStatus,"_foregroundView");
       UIStatusBarForegroundStyleAttributes *springForegroundStyle=[springForeground foregroundStyle];
       UIColor *sColor=[springForegroundStyle tintColor];
-      
+
       CGFloat white;
       [sColor getWhite:&white alpha:nil];
-      
-      if (white > 0.5){
+
+      if (white > 0.5) {
         dynColor=0;
       } else {
         dynColor=1;
       }
     } else {
       // Is the StatusBar hidden?
-      if ([SBA statusBarHiddenForCurrentOrientation]) {
+      if (([SBA respondsToSelector:@selector(statusBarHiddenForCurrentOrientation)] && [SBA statusBarHiddenForCurrentOrientation]) || IsCurrentAppStatusBarHidden) {
         // Build our snapshot path
         NSArray *brightnessArray=[cachedBrightness objectForKey:[SBA bundleIdentifier]];
         double thePast = [[NSDate date] timeIntervalSince1970];
@@ -192,7 +208,7 @@ bool sVolIsVisible = NO;
         // Do we have a cached brightness?
         if (brightnessArray != nil && [brightnessArray count] > 1 && (thePast - mostRecent) < 60*5) {
           float dynamicColorsBrightness = [[brightnessArray objectAtIndex:0] floatValue];
-          if (dynamicColorsBrightness > 0.5){
+          if (dynamicColorsBrightness > 0.5) {
             dynColor = 1;
           } else {
             dynColor = 0;
@@ -217,7 +233,7 @@ bool sVolIsVisible = NO;
 
             // Find newest screenshot
             NSDirectoryEnumerator *screenshotEnum = [fileManager enumeratorAtURL:directoryURL
-                                                      includingPropertiesForKeys:keys 
+                                                      includingPropertiesForKeys:keys
                                                                          options:0
                                                                     errorHandler:nil];
             NSDate *newestDate;
@@ -228,8 +244,8 @@ bool sVolIsVisible = NO;
               [url getResourceValue:&fileDate forKey:NSURLAttributeModificationDateKey error:&err];
               [url getResourceValue:&isFile forKey:NSURLIsRegularFileKey error:&err];
 
-              if (newestDate == nil || [newestDate compare:fileDate] == NSOrderedAscending){
-                if (isFile != nil && [isFile integerValue] == 1){
+              if (newestDate == nil || [newestDate compare:fileDate] == NSOrderedAscending) {
+                if (isFile != nil && [isFile integerValue] == 1) {
                   newestDate=fileDate;
                   newestURL=url;
                 }
@@ -251,7 +267,7 @@ bool sVolIsVisible = NO;
                 samples++;
                 CGPoint point = CGPointMake(x,y);
                   int pixelInfo = ((pWidth * point.y) + point.x) * 4; // The image is png
-                  brightness += (pData[pixelInfo] / 255.0) * 0.3 + 
+                  brightness += (pData[pixelInfo] / 255.0) * 0.3 +
                                 (pData[(pixelInfo + 1)] / 255.0) * 0.59 +
                                 (pData[(pixelInfo + 2)] / 255.0) * 0.11;
               }
@@ -273,8 +289,13 @@ bool sVolIsVisible = NO;
         }
       } else { // Status bar not hidden
         // Pull the statusbar's style
-        int style = [[SBA effectiveStatusBarStyleRequest] style];
-        if (style == 0 || style == 300){
+        int style = 0;
+        if ([SBA respondsToSelector:@selector(effectiveStatusBarStyleRequest)]) {
+          style = [[SBA effectiveStatusBarStyleRequest] style];
+        } else if ([SBA respondsToSelector:@selector(info)]) {
+          style = SBA.info.defaultStatusBarStyle;
+        }
+        if (style == 0 || style == 300) {
           dynColor = 1;
         } else {
           dynColor = 0;
@@ -285,16 +306,16 @@ bool sVolIsVisible = NO;
 
   // Not dynamic color
   bool colorChoice = [[preferences objectForKey:@"InvertColors"] intValue];
-  if (dynColor > -1){
+  if (dynColor > -1) {
     // IN: 1 white, 0 black
     // DYN: 1 white, 0 black
     colorChoice = dynColor;
-    if ([[preferences objectForKey:@"InvertColors"] intValue] == 1){
+    if ([[preferences objectForKey:@"InvertColors"] intValue] == 1) {
       colorChoice = !colorChoice;
     }
   }
-  
-  if (colorChoice){
+
+  if (colorChoice) {
     //[[SBApplicationController sharedInstance] applicationWithDisplayIdentifier:@"com.apple.springboard"];
     //[[[UIApplication sharedApplication] keyWindow] _statusBarControllingWindow]
     [indicatorLabel setTextColor:[UIColor blackColor]];
@@ -313,7 +334,7 @@ bool sVolIsVisible = NO;
   } else {
     [indicatorLabel setTextColor:[UIColor whiteColor]];
 
-    if ([%c(UIBlurEffect) class]){ // iOS8
+    if ([%c(UIBlurEffect) class]) { // iOS8
       UIBlurEffect *blurEffect=[%c(UIBlurEffect) effectWithStyle:UIBlurEffectStyleDark];
       [blurView _setEffect:blurEffect];
     }else{ // iOS7
@@ -326,7 +347,7 @@ bool sVolIsVisible = NO;
     }
   }
 
-  if ([[preferences objectForKey:@"DisableBackground"] intValue] == 1){
+  if ([[preferences objectForKey:@"DisableBackground"] intValue] == 1) {
     [back setAlpha:0.0];
     [blurView setAlpha:0.0];
   } else {
@@ -334,14 +355,14 @@ bool sVolIsVisible = NO;
     [blurView setAlpha:1.0];
   }
 
-  if ([[preferences objectForKey:@"HideTime"] intValue] == 1){
+  if ([[preferences objectForKey:@"HideTime"] intValue] == 1) {
     SBMainStatusBarStateProvider *statusBarStateProvider = [%c(SBMainStatusBarStateProvider) sharedInstance];
     [statusBarStateProvider enableTime:NO crossfade:NO crossfadeDuration:0];
     [statusBarStateProvider setTimeCloaked:YES];
   }
-  
+
   // Silent switch
-  if (level == 17){
+  if (level == 17) {
     [timeString appendString:@"S i l e n t"];
     AudioServicesPlaySystemSound(kSystemSoundID_Vibrate); // Temporary silent vibrate fix
   } else {
@@ -349,16 +370,16 @@ bool sVolIsVisible = NO;
     if (level == 18) {
       level = [[%c(VolumeControl) sharedVolumeControl] volume]*16;
     }
-    
+
     // Icons for system vs media volume - if enabled
     if ([[preferences objectForKey:@"HideIcons"] intValue] == 0) {
-      if (type == 0){
+      if (type == 0) {
         [timeString appendString:@"♫  "];
       }else{
         [timeString appendString:@"☎︎  "];
       }
     }
-    
+
     // Make level into string - circles or squares?
     for (int i = 0; i < level; i++) {
       if ([[preferences objectForKey:@"UseSquares"] intValue]==0) {
@@ -367,7 +388,7 @@ bool sVolIsVisible = NO;
         [timeString appendString:@"◾︎"];//@"■"];
       }
     }
-    
+
     for (int i = 0; i < 16 - level; i++) {
       if ([[preferences objectForKey:@"UseSquares"] intValue] == 0) {
         [timeString appendString:@"⚪︎"];
@@ -376,7 +397,7 @@ bool sVolIsVisible = NO;
       }
     }
   }
-  
+
   // Fix kerning with circles
   NSMutableAttributedString *attributedString = [[NSMutableAttributedString alloc] initWithString:timeString];
   if ([[preferences objectForKey:@"UseSquares"] intValue]==0) {
@@ -393,25 +414,21 @@ bool sVolIsVisible = NO;
                            skipCallbacks:YES];
 
   CGRect windowRect = sVolWindow.frame;
-  CGRect mainScreenRect = [UIScreen mainScreen].bounds;
-  if (orientation == 3 || orientation == 4) {
-    windowRect = CGRectMake(0, 0, CGRectGetHeight(mainScreenRect), 20);
-  } else {
-    windowRect = CGRectMake(0, 0, CGRectGetWidth(mainScreenRect), 20);
-  }
+  CGRect mainScreenRect = [self getScreenBoundsForOrientation:orientation];
+  windowRect = CGRectMake(0, 0, CGRectGetWidth(mainScreenRect), 20);
   [sVolWindow setFrame:windowRect];
 
   // Show and set hide timer
   if (!sVolIsVisible || isAnimatingClose) {
     // Window adjustments
-    if (!isAnimatingClose){
+    if (!isAnimatingClose) {
       [sVolWindow fixSvolWindow];
       sVolIsVisible = YES;
       [sVolWindow setHidden:NO];
     } else {
       svolCloseInterrupt = YES;
     }
-    
+
     // Animate entry
     [UIView animateWithDuration:[[preferences objectForKey:@"AnimationDuration"] floatValue]
                           delay:nil
@@ -421,7 +438,7 @@ bool sVolIsVisible = NO;
         CGRect windowRect=sVolWindow.frame;
         windowRect.origin.y = 0;
         [sVolWindow setFrame:windowRect];
-      } completion:^(BOOL finished){
+      } completion:^(BOOL finished) {
         // Reset the timer
         svolCloseInterrupt = NO;
         if (hideTimer != nil) {
@@ -451,7 +468,7 @@ bool sVolIsVisible = NO;
 - (void)hideSvolWindow{
   // Unset hide timer
   hideTimer=nil;
-  
+
   // Animate hide
   [UIView animateWithDuration:[[preferences objectForKey:@"AnimationDuration"] floatValue]
                         delay:0
@@ -462,15 +479,15 @@ bool sVolIsVisible = NO;
       CGRect windowRect = sVolWindow.frame;
       windowRect.origin.y = -20;
       [sVolWindow setFrame:windowRect];
-    } completion:^(BOOL finished){
+    } completion:^(BOOL finished) {
       // Hide the window
       isAnimatingClose = NO;
-      
-      if (finished && !svolCloseInterrupt){
+
+      if (finished && !svolCloseInterrupt) {
         sVolIsVisible = NO;
         [sVolWindow setHidden:YES];
 
-        if ([[preferences objectForKey:@"HideTime"] intValue] == 1){
+        if ([[preferences objectForKey:@"HideTime"] intValue] == 1) {
           SBMainStatusBarStateProvider *statusBarStateProvider = [%c(SBMainStatusBarStateProvider) sharedInstance];
           [statusBarStateProvider enableTime:YES crossfade:NO crossfadeDuration:0];
           [statusBarStateProvider setTimeCloaked:NO];
@@ -493,7 +510,7 @@ bool sVolIsVisible = NO;
   %orig;
 
   int theMode = MSHookIvar<int>(self,"_mode");
-  if (theMode == 0){
+  if (theMode == 0) {
     [svol _updateSvolLabel:[self getMediaVolume]*16 type:0];
   } else {
     [svol _updateSvolLabel:[self volume]*16 type:1];
@@ -529,6 +546,15 @@ static void PreferencesChanged(CFNotificationCenterRef center,
   }
 }
 
+static void SetCurrentAppStatusBarHidden() {
+  IsCurrentAppStatusBarHidden = true;
+}
+
+static void SetCurrentAppStatusBarVisible() {
+  IsCurrentAppStatusBarHidden = false;
+}
+
+
 %ctor{
   CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(),
                                   NULL,
@@ -537,7 +563,20 @@ static void PreferencesChanged(CFNotificationCenterRef center,
                                   NULL,
                                   CFNotificationSuspensionBehaviorDeliverImmediately);
 
-  if (access("/var/lib/dpkg/info/com.chewmieser.statusvollite.list",F_OK) == -1){
+  CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(),
+                                    NULL,
+                                    (CFNotificationCallback)SetCurrentAppStatusBarHidden,
+                                    CFSTR("com.fidele007.statusvollite/SetStatusBarHidden"),
+                                    NULL,
+                                    CFNotificationSuspensionBehaviorDeliverImmediately);
+  CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(),
+                                    NULL,
+                                    (CFNotificationCallback)SetCurrentAppStatusBarVisible,
+                                    CFSTR("com.fidele007.statusvollite/SetStatusBarVisible"),
+                                    NULL,
+                                    CFNotificationSuspensionBehaviorDeliverImmediately);
+
+  if (access("/var/lib/dpkg/info/com.chewmieser.statusvollite.list",F_OK) == -1) {
     NSLog(@"[StatusVol 2] This package came from an unofficial repo. Please re-download from http://apt.steverolfe.com.");
   }
 }

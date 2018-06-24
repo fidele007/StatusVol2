@@ -509,6 +509,8 @@ bool IsCurrentAppStatusBarHidden;
 - (void)_changeVolumeBy:(float)arg1 {
   %orig;
 
+  if (![self _HUDIsDisplayableForCategory:@"Audio/Video"]) return;
+
   int theMode = MSHookIvar<int>(self,"_mode");
   if (theMode == 0) {
     [svol _updateSvolLabel:[self getMediaVolume]*16 type:0];
@@ -518,13 +520,20 @@ bool IsCurrentAppStatusBarHidden;
 }
 
 // Force HUDs hidden
-- (_Bool)_HUDIsDisplayableForCategory:(id)arg1 {
-  return NO;
+- (id)_volumeHUDViewWithMode:(int)arg1 volume:(float)arg2 {
+  // Disable system volume HUD view without disabling the ability
+  // to check if volume HUD is currently displayable
+  return nil;
 }
 
-- (_Bool)_isCategoryAlwaysHidden:(id)arg1 {
-  return YES;
-}
+// - (_Bool)_HUDIsDisplayableForCategory:(id)arg1 {
+//   // HBLogDebug(@"_HUDIsDisplayableForCategory %@: %d", arg1, %orig);
+//   return NO;
+// }
+
+// - (_Bool)_isCategoryAlwaysHidden:(id)arg1 {
+//   return YES;
+// }
 %end
 
 %hook SpringBoard

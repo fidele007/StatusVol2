@@ -8,6 +8,10 @@
 - (float)volume;
 - (void)_initializeEUVolumeLimits;
 - (void)sendEUVolumeLimitAcknowledgementIfNecessary;
+- (BOOL)_isVolumeHUDVisible;
+- (void)hideVolumeHUDIfVisible;
+- (id)volumeHUDForCurrentCategory;
+- (BOOL)_HUDIsDisplayableForCategory:(id)arg1 ;
 @end
 
 @interface UIStatusBarForegroundView
